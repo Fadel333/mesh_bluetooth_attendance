@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ProxiMesh — Student Check-in</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --navy: #050d1a;
+    --navy-2: #0a1628;
+    --navy-3: #0f2040;
+    --cyan: #00e5ff;
+    --cyan-glow: rgba(0,229,255,0.12);
+    --slate: #1a2d4a;
+    --text: #c8dff5;
+    --text-dim: #6a8aaa;
+    --white: #f0f8ff;
+    --success: #00ffaa;
+    --warn: #ffb800;
+    --danger: #ff4466;
+    --border: rgba(0,229,255,0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--navy);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,22,40,0.8);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 50;
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700; font-size: 0.95rem;
+    color: var(--white); text-decoration: none;
+  }
+
+  .logo-dot {
+    width: 24px; height: 24px;
+    border: 2px solid var(--cyan);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-dot::after {
+    content: '';
+    width: 7px; height: 7px;
+    background: var(--cyan); border-radius: 50%;
+    box-shadow: 0 0 5px var(--cyan);
+  }
+
+  .header-info {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem; color: var(--text-dim);
+    text-align: right;
+  }
+
+  /* MAIN LAYOUT */
+  .page {
+    flex: 1; position: relative; z-index: 1;
+    padding: 32px 20px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 24px;
+  }
+
+  /* STEP INDICATOR */
+  .steps {
+    display: flex; align-items: center; gap: 0;
+    margin-bottom: 8px;
+  }
+  .step {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: relative;
+  }
+  .step-circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem; font-weight: 700;
+    color: var(--text-dim);
+    background: var(--navy-2);
+    transition: all 0.3s;
+  }
+  .step.active .step-circle {
+    border-color: var(--cyan); color: var(--cyan);
+    box-shadow: 0 0 12px rgba(0,229,255,0.3);
+  }
+  .step.done .step-circle {
+    border-color: var(--success); background: rgba(0,255,170,0.1);
+    color: var(--success);
+  }
+  .step-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.58rem; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .step.active .step-label { color: var(--cyan); }
+  .step.done .step-label { color: var(--success); }
+
+  .step-line {
+    width: 48px; height: 1px;
+    background: var(--border);
+    margin-bottom: 22px;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .step-line.done { background: var(--success); }
+
+  /* CARD */
+  .checkin-card {
+    background: var(--navy-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%; max-width: 440px;
+    overflow: hidden;
+  }
+
+  .card-top {
+    padding: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-stage-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem; color: var(--cyan);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .card-stage-title {
+    font-size: 1.35rem; font-weight: 700;
+    color: var(--white); margin-bottom: 6px;
+  }
+
+  .card-stage-sub {
+    font-size: 0.82rem; color: var(--text-dim); line-height: 1.5;
+  }
+
+  .card-body { padding: 28px; }
+
+  /* FORM */
+  .form-group { margin-bottom: 18px; }
+  label {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem; color: var(--text-dim);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+  input, select {
+    width: 100%; padding: 12px 14px;
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 6px; color: var(--white);
+    font-family: 'Space Mono', monospace; font-size: 0.85rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  input:focus, select:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 3px rgba(0,229,255,0.07);
+  }
+  select option { background: var(--navy-2); }
+
+  .btn-full {
+    width: 100%; padding: 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    background: var(--cyan); color: var(--navy);
+    border: none; border-radius: 6px;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-full:hover { background: var(--white); box-shadow: 0 0 24px rgba(0,229,255,0.35); }
+  .btn-full:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* SCANNING UI */
+  .scan-arena {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 24px; padding: 8px 0;
+  }
+
+  .radar {
+    width: 200px; height: 200px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .radar-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(0,229,255,0.15);
+    top:50%;left:50%;transform:translate(-50%,-50%);
+  }
+  .radar-ring:nth-child(1){width:60px;height:60px;}
+  .radar-ring:nth-child(2){width:110px;height:110px;}
+  .radar-ring:nth-child(3){width:160px;height:160px;}
+  .radar-ring:nth-child(4){width:200px;height:200px;}
+
+  .radar-sweep {
+    position: absolute;
+    width: 100px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan));
+    top: 50%; left: 50%;
+    transform-origin: 0 50%;
+    animation: sweep 2s linear infinite;
+  }
+  @keyframes sweep { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+  .radar-center {
+    width: 20px; height: 20px;
+    background: var(--cyan);
+    border-radius: 50%;
+    z-index: 2;
+    box-shadow: 0 0 12px var(--cyan);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.4rem; color: var(--navy);
+    font-weight: 700;
+  }
+
+  .radar-blip {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    z-index: 3;
+    opacity: 0;
+    animation: blip-appear 0.4s forwards ease-out;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .radar-blip:hover { transform: scale(1.5) !important; }
+  .radar-blip.match { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .radar-blip.nomatch { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  .radar-blip.unknown { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+
+  @keyframes blip-appear {
+    from { opacity:0; transform:scale(0); }
+    to { opacity:1; transform:scale(1); }
+  }
+
+  .scan-status {
+    text-align: center;
+  }
+
+  .scan-status-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem; color: var(--cyan);
+    animation: blink-text 1.5s ease-in-out infinite;
+  }
+  @keyframes blink-text { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  .scan-progress {
+    height: 3px; background: var(--navy-3);
+    border-radius: 2px; overflow: hidden;
+    margin-top: 12px;
+  }
+  .scan-progress-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--success));
+    width: 0%; transition: width 0.2s;
+  }
+
+  /* DETECTED LIST */
+  .detected-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .detected-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    animation: slide-in 0.3s ease-out;
+  }
+  @keyframes slide-in { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+
+  .device-circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .device-match { background: rgba(0,255,170,0.1); border: 1px solid var(--success); color: var(--success); }
+  .device-nomatch { background: rgba(255,68,102,0.1); border: 1px solid var(--danger); color: var(--danger); }
+  .device-unknown { background: rgba(255,184,0,0.1); border: 1px solid var(--warn); color: var(--warn); }
+
+  .device-info { flex: 1; }
+  .device-name { font-weight: 700; color: var(--white); font-size: 0.83rem; }
+  .device-meta { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--text-dim); margin-top: 2px; }
+
+  .signal-bar { display: flex; align-items: flex-end; gap: 2px; }
+  .signal-seg {
+    width: 4px; border-radius: 1px;
+    background: var(--text-dim);
+  }
+  .signal-seg.lit { background: var(--success); }
+
+  /* RESULT SCREEN */
+  .result-screen {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 20px; padding: 12px 0; text-align: center;
+  }
+
+  .result-icon {
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.6rem;
+    animation: pop-in 0.5s cubic-bezier(.175,.885,.32,1.275) forwards;
+  }
+  @keyframes pop-in { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+
+  .result-icon.ok { background: rgba(0,255,170,0.12); border: 2px solid var(--success); box-shadow: 0 0 32px rgba(0,255,170,0.2); }
+  .result-icon.fail { background: rgba(255,68,102,0.12); border: 2px solid var(--danger); box-shadow: 0 0 32px rgba(255,68,102,0.2); }
+
+  .result-title { font-size: 1.4rem; font-weight: 800; color: var(--white); }
+  .result-msg { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; max-width: 320px; }
+
+  .result-detail {
+    width: 100%;
+    background: var(--navy-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 12px; text-align: center;
+  }
+  .rd-val { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700; color: var(--cyan); }
+  .rd-label { font-family: 'Space Mono', monospace; font-size: 0.58rem; color: var(--text-dim); text-transform: uppercase; margin-top: 3px; }
+
+  /* INFO BOX */
+  .info-box {
+    width: 100%; max-width: 440px;
+    background: rgba(0,229,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 18px;
+    font-size: 0.8rem; color: var(--text-dim); line-height: 1.6;
+  }
+  .info-box strong { color: var(--text); }
+
+  footer {
+    padding: 20px 28px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem; color: var(--text-dim);
+    position: relative; z-index: 1;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="logo">
+    <div class="logo-dot"></div>
+    ProxiMesh
+  </a>
+  <div class="header-info">
+    DCIT 304 · Group Lab<br>
+    <span style="color:var(--cyan)">Session Active</span>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- STEPS -->
+  <div class="steps">
+    <div class="step active" id="step1">
+      <div class="step-circle" id="sc1">1</div>
+      <div class="step-label">Identity</div>
+    </div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step" id="step2">
+      <div class="step-circle" id="sc2">2</div>
+      <div class="step-label">Scanning</div>
+    </div>
+    <div class="step-line" id="sl2"></div>
+    <div class="step" id="step3">
+      <div class="step-circle" id="sc3">3</div>
+      <div class="step-label">Verify</div>
+    </div>
+    <div class="step-line" id="sl3"></div>
+    <div class="step" id="step4">
+      <div class="step-circle" id="sc4">4</div>
+      <div class="step-label">Result</div>
+    </div>
+  </div>
+
+  <!-- CARD -->
+  <div class="checkin-card">
+
+    <!-- STAGE 1: IDENTITY -->
+    <div id="stage-1">
+      <div class="card-top">
+        <div class="card-stage-label">Step 1 of 4</div>
+        <div class="card-stage-title">Student Identity</div>
+        <div class="card-stage-sub">Enter your student ID and assigned group to begin the check-in process.</div>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>Student ID</label>
+          <input type="text" id="student-id" placeholder="e.g. 10987654" maxlength="12"/>
+        </div>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="student-name" placeholder="e.g. Kofi Asante"/>
+        </div>
+        <div class="form-group">
+          <label>Assigned Group</label>
+          <select id="student-group">
+            <option value="">— Select your group —</option>
+            <option value="1">Group 1 — Network Lab A</option>
+            <option value="2">Group 2 — Network Lab B</option>
+            <option value="3">Group 3 — Security Lab</option>
+            <option value="4">Group 4 — Database Lab</option>
+            <option value="5">Group 5 — ML Lab</option>
+            <option value="6">Group 6 — Web Lab</option>
+          </select>
+        </div>
+        <button class="btn-full" onclick="goToStage2()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- STAGE 2: SCANNING -->
+    <div id="stage-2" class="hidden">
+      <div class="card-top">
+        <div class="card-stage-label">Step 2 of 4</div>
+        <div class="card-stage-title">Scanning Nearby Devices</div>
+        <div class="card-stage-sub">Hold your phone still. ProxiMesh is detecting Bluetooth signals from devices around you.</div>
+      </div>
+      <div class="card-body">
+        <div class="scan-arena">
+          <div class="radar" id="radar">
+            <div class="radar-ring"></div>
+            <div class="radar-ring"></div>
+            <div class="radar-ring"></div>
+            <div class="radar-ring"></div>
+            <div class="radar-sweep"></div>
+            <div class="radar-center">ME</div>
+          </div>
+          <div class="scan-status">
+            <div class="scan-status-text" id="scan-text">Initialising BLE scan...</div>
+            <div class="scan-progress" style="width:200px;margin:0 auto;">
+              <div class="scan-progress-fill" id="scan-prog"></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:20px;">
+          <div style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;">
+            Detected Devices (<span id="detected-count">0</span>)
+          </div>
+          <div class="detected-list" id="detected-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 3: CONFIRM / GESTURE -->
+    <div id="stage-3" class="hidden">
+      <div class="card-top">
+        <div class="card-stage-label">Step 3 of 4</div>
+        <div class="card-stage-title">Confirm Your Presence</div>
+        <div class="card-stage-sub">Shake your phone to confirm you are physically present with your group. This prevents remote check-in fraud.</div>
+      </div>
+      <div class="card-body">
+        <div style="text-align:center;padding:16px 0 24px;">
+          <div style="font-size:4rem;animation:shake 1.5s ease-in-out infinite;display:inline-block" id="shake-icon">📱</div>
+          <div style="font-family:'Space Mono',monospace;font-size:0.75rem;color:var(--cyan);margin-top:12px;" id="shake-text">Waiting for shake gesture...</div>
+        </div>
+        <div style="background:var(--navy-3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+          <div style="font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.08em;">Scan Summary</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;">
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:1.2rem;font-weight:700;color:var(--success)" id="sum-match">0</div>
+              <div style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-dim);text-transform:uppercase">Group Match</div>
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:1.2rem;font-weight:700;color:var(--warn)" id="sum-other">0</div>
+              <div style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-dim);text-transform:uppercase">Other Group</div>
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:1.2rem;font-weight:700;color:var(--cyan)" id="sum-total">0</div>
+              <div style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-dim);text-transform:uppercase">Total Found</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-full" id="shake-btn" onclick="simulateShake()">📳 Simulate Shake (Demo)</button>
+      </div>
+    </div>
+
+    <!-- STAGE 4: RESULT -->
+    <div id="stage-4" class="hidden">
+      <div class="card-top">
+        <div class="card-stage-label">Step 4 of 4</div>
+        <div class="card-stage-title" id="result-title-top">Verification Complete</div>
+        <div class="card-stage-sub" id="result-sub-top">Your attendance has been processed.</div>
+      </div>
+      <div class="card-body">
+        <div class="result-screen">
+          <div class="result-icon" id="result-icon">✅</div>
+          <div class="result-title" id="result-title-main">Attendance Verified!</div>
+          <div class="result-msg" id="result-msg">You have been successfully marked present in your assigned group. Your lecturer has been notified.</div>
+          <div class="result-detail">
+            <div>
+              <div class="rd-val" id="rd-match">5/7</div>
+              <div class="rd-label">Peers Matched</div>
+            </div>
+            <div>
+              <div class="rd-val" id="rd-pct">71%</div>
+              <div class="rd-label">Match Rate</div>
+            </div>
+            <div>
+              <div class="rd-val" id="rd-grp">Grp 3</div>
+              <div class="rd-label">Your Group</div>
+            </div>
+          </div>
+          <button class="btn-full" onclick="resetFlow()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text-dim);">← Start Over</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- INFO -->
+  <div class="info-box">
+    <strong>How it works:</strong> Your device scans for nearby Bluetooth signals from registered student devices. If <strong>≥60%</strong> of detected devices belong to your assigned group, attendance is verified. No internet required during scanning.
+  </div>
+
+</div>
+
+<footer>
+  ProxiMesh · BLE Proximity Verification · Secure · Offline-capable
+</footer>
+
+<script>
+  let scanInterval, scanProgress = 0;
+  let studentGroup = 3;
+  let detectedDevices = []; // Filled from backend after scan
+
+  function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      const s = document.getElementById('step' + i);
+      const c = document.getElementById('sc' + i);
+      s.classList.remove('active', 'done');
+      if (i < n) { s.classList.add('done'); c.textContent = '✓'; }
+      else if (i === n) { s.classList.add('active'); c.textContent = i; }
+      else { c.textContent = i; }
+      if (i < 4) {
+        const l = document.getElementById('sl' + i);
+        l.classList.toggle('done', i < n);
+      }
+    }
+  }
+
+  function showStage(n) {
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById('stage-' + i).classList.toggle('hidden', i !== n);
+    }
+    setStep(n);
+  }
+
+  function goToStage2() {
+    const id = document.getElementById('student-id').value.trim();
+    const name = document.getElementById('student-name').value.trim();
+    const grp = document.getElementById('student-group').value;
+    if (!id || !name || !grp) { alert('Please fill in all fields.'); return; }
+    studentGroup = parseInt(grp);
+    showStage(2);
+    startScan();
+  }
+
+  function startScan() {
+    scanProgress = 0;
+    detectedDevices = [];
+    const fill = document.getElementById('scan-prog');
+    const text = document.getElementById('scan-text');
+
+    const msgs = [
+      'Initialising BLE scan...',
+      'Broadcasting device beacon...',
+      'Scanning for nearby signals...',
+      'Analysing cluster proximity...',
+      'Cross-referencing group registry...',
+      'Finalising scan results...'
+    ];
+    let msgIdx = 0;
+
+    scanInterval = setInterval(() => {
+      scanProgress += 3;
+      fill.style.width = Math.min(scanProgress, 100) + '%';
+      if (scanProgress % 16 === 0 && msgIdx < msgs.length) {
+        text.textContent = msgs[msgIdx++];
+      }
+
+      if (scanProgress >= 100) {
+        clearInterval(scanInterval);
+        text.textContent = 'Scan complete';
+        setTimeout(() => showStage(3), 800);
+      }
+    }, 60);
+  }
+
+  async function simulateShake() {
+    const btn = document.getElementById('shake-btn');
+    const text = document.getElementById('shake-text');
+    btn.disabled = true;
+    text.textContent = 'Shake detected! ✓';
+    document.getElementById('shake-icon').style.animation = 'shake 0.3s ease-in-out 3';
+
+    setTimeout(async () => {
+      try {
+        // Send checkin request and get real backend result
+        const result = await sendCheckin();
+        detectedDevices = result.peers_detected; // Real devices from backend
+
+        renderDetectedDevices(detectedDevices);
+
+        const pass = result.pass;
+        const pct = result.percentage;
+        const match = result.matchCount;
+        const total = result.totalCount;
+        const grp = result.group;
+
+        // Update UI
+        const resIcon = document.getElementById('result-icon');
+        resIcon.textContent = pass ? '✅' : '❌';
+        resIcon.className = 'result-icon ' + (pass ? 'ok' : 'fail');
+
+        document.getElementById('result-title-main').textContent = pass ? 'Attendance Verified!' : 'Verification Failed';
+        document.getElementById('result-msg').textContent = pass
+          ? `You have been successfully marked present in Group ${grp}. Your lecturer has been notified.`
+          : `Only ${pct}% of detected devices match your assigned group (minimum 60% required). Please ensure you are sitting with your group.`;
+
+        document.getElementById('rd-match').textContent = match + '/' + total;
+        document.getElementById('rd-pct').textContent = pct + '%';
+        document.getElementById('rd-grp').textContent = 'Grp ' + grp;
+        document.getElementById('result-title-top').textContent = pass ? 'Verification Complete' : 'Verification Failed';
+        document.getElementById('result-sub-top').textContent = pass ? 'Your attendance has been recorded.' : 'Group cluster mismatch detected.';
+
+        showStage(4);
+      } catch (err) {
+        console.error('Check-in failed', err);
+        alert('Error: Could not complete check-in. Please try again.');
+        btn.disabled = false;
+        text.textContent = 'Waiting for shake gesture...';
+      }
+    }, 1200);
+  }
+
+  function renderDetectedDevices(devices) {
+    const list = document.getElementById('detected-list');
+    const radar = document.getElementById('radar');
+    const countEl = document.getElementById('detected-count');
+
+    list.innerHTML = '';
+    radar.querySelectorAll('.radar-blip').forEach(b => b.remove());
+    countEl.textContent = devices.length;
+
+    devices.forEach(d => {
+      const item = document.createElement('div');
+      item.className = 'detected-item';
+      item.innerHTML = `
+        <div class="device-circle">${d.name.split(' ').map(x => x[0]).join('')}</div>
+        <div class="device-info">
+          <div class="device-name">${d.name}</div>
+          <div class="device-meta">Group ${d.group} · ${d.device}</div>
+        </div>
+        <div class="signal-bar">
+          ${[1,2,3,4].map(s => `<div class="signal-seg ${s <= d.signal ? 'lit' : ''}" style="height:${s*4+4}px"></div>`).join('')}
+        </div>
+      `;
+      list.prepend(item);
+
+      // Add radar blip
+      const maxR = 90;
+      const r = (5-d.signal)/4 * maxR * 0.8 + 10;
+      const angle = Math.random() * Math.PI * 2;
+      const x = 100 + Math.cos(angle) * r;
+      const y = 100 + Math.sin(angle) * r;
+      const blip = document.createElement('div');
+      blip.className = 'radar-blip';
+      blip.style.left = x + 'px';
+      blip.style.top = y + 'px';
+      blip.style.transform = 'translate(-50%,-50%)';
+      radar.appendChild(blip);
+    });
+  }
+
+  async function sendCheckin() {
+    const peers = detectedDevices.map(d => ({ device: d.device, group: d.group }));
+
+    const payload = {
+      student_id: document.getElementById("student-id").value,
+      name: document.getElementById("student-name").value,
+      group: studentGroup,
+      peers_detected: peers
+    };
+
+    const res = await fetch("/api/checkin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    return await res.json(); // backend returns {pass, percentage, matchCount, totalCount, peers_detected, group}
+  }
+
+  function resetFlow() {
+    document.getElementById('student-id').value='';
+    document.getElementById('student-name').value='';
+    document.getElementById('student-group').value='';
+    document.getElementById('detected-list').innerHTML='';
+    document.getElementById('detected-count').textContent='0';
+    document.getElementById('scan-prog').style.width='0%';
+    document.getElementById('shake-btn').disabled=false;
+    document.getElementById('shake-text').textContent='Waiting for shake gesture...';
+    document.getElementById('radar').querySelectorAll('.radar-blip').forEach(b=>b.remove());
+    clearInterval(scanInterval);
+    showStage(1);
+  }
+</script>
+</body>
+</html>

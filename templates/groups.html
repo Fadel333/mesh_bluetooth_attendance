@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ProxiMesh — Group Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --navy: #050d1a;
+    --navy-2: #0a1628;
+    --navy-3: #0f2040;
+    --cyan: #00e5ff;
+    --cyan-glow: rgba(0,229,255,0.1);
+    --slate: #1a2d4a;
+    --text: #c8dff5;
+    --text-dim: #6a8aaa;
+    --white: #f0f8ff;
+    --success: #00ffaa;
+    --warn: #ffb800;
+    --danger: #ff4466;
+    --border: rgba(0,229,255,0.1);
+    --sidebar-w: 240px;
+  }
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--navy);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;display:flex;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+
+  .sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--navy-2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:50;}
+  .sidebar-logo{padding:24px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-weight:700;font-size:0.95rem;color:var(--white);text-decoration:none;}
+  .logo-pulse{width:28px;height:28px;border:2px solid var(--cyan);border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;}
+  .logo-pulse::after{content:'';width:8px;height:8px;background:var(--cyan);border-radius:50%;box-shadow:0 0 6px var(--cyan);animation:pdot 2s ease-in-out infinite;}
+  @keyframes pdot{0%,100%{transform:scale(1)}50%{transform:scale(1.3);box-shadow:0 0 12px var(--cyan);}}
+  .sidebar-section{padding:20px 12px 8px;font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:6px;margin:2px 8px;font-size:0.88rem;font-weight:600;color:var(--text-dim);cursor:pointer;transition:all 0.2s;text-decoration:none;position:relative;}
+  .nav-item:hover{background:rgba(0,229,255,0.06);color:var(--text);}
+  .nav-item.active{background:rgba(0,229,255,0.1);color:var(--cyan);}
+  .nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:var(--cyan);border-radius:0 2px 2px 0;}
+  .nav-icon{font-size:1.05rem;width:20px;text-align:center;}
+  .sidebar-bottom{margin-top:auto;padding:16px 12px;border-top:1px solid var(--border);}
+  .user-pill{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--navy-3);border-radius:6px;}
+  .user-avatar{width:32px;height:32px;background:var(--cyan);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:0.7rem;font-weight:700;color:var(--navy);}
+  .user-name{font-size:0.82rem;font-weight:700;color:var(--white);}
+  .user-role{font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--text-dim);}
+
+  .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh;position:relative;z-index:1;}
+  .topbar{padding:16px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(10,22,40,0.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:40;}
+  .topbar-title{font-size:1.15rem;font-weight:700;color:var(--white);}
+  .topbar-sub{font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--text-dim);}
+  .topbar-right{display:flex;align-items:center;gap:10px;}
+
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;font-family:'Space Mono',monospace;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border-radius:4px;cursor:pointer;transition:all 0.2s;border:none;text-decoration:none;color:inherit;}
+  .btn-primary{background:var(--cyan);color:var(--navy);}
+  .btn-primary:hover{background:var(--white);box-shadow:0 0 20px rgba(0,229,255,0.35);}
+  .btn-outline{background:transparent;color:var(--cyan);border:1px solid rgba(0,229,255,0.3);}
+  .btn-outline:hover{background:var(--cyan-glow);}
+  .btn-sm{padding:6px 14px;font-size:0.65rem;}
+  .btn-danger{background:rgba(255,68,102,0.1);color:var(--danger);border:1px solid rgba(255,68,102,0.2);}
+  .btn-danger:hover{background:rgba(255,68,102,0.2);}
+
+  .content{padding:28px 32px;}
+
+  /* SEARCH + FILTER */
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+  .search-wrap{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--navy-2);border:1px solid var(--border);border-radius:6px;flex:1;min-width:200px;}
+  .search-wrap input{background:none;border:none;color:var(--white);font-family:'Space Mono',monospace;font-size:0.82rem;outline:none;width:100%;}
+  .search-wrap input::placeholder{color:var(--text-dim);}
+  select.filter{padding:10px 14px;background:var(--navy-2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.75rem;outline:none;cursor:pointer;}
+  select.filter option{background:var(--navy-2);}
+
+  /* GROUPS GRID */
+  .groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;}
+
+  .group-card{background:var(--navy-2);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color 0.2s,transform 0.2s;}
+  .group-card:hover{border-color:rgba(0,229,255,0.25);transform:translateY(-2px);}
+
+  .gc-top{padding:18px 20px 14px;border-bottom:1px solid var(--border);}
+  .gc-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+  .gc-num{font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--cyan);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;}
+  .gc-name{font-size:1.05rem;font-weight:700;color:var(--white);}
+  .tag{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-family:'Space Mono',monospace;font-size:0.62rem;font-weight:700;}
+  .tag::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+  .tag-success{background:rgba(0,255,170,0.1);color:var(--success);}
+  .tag-warn{background:rgba(255,184,0,0.1);color:var(--warn);}
+  .tag-danger{background:rgba(255,68,102,0.1);color:var(--danger);}
+  .tag-neutral{background:rgba(106,138,170,0.1);color:var(--text-dim);}
+
+  .gc-progress-wrap{margin-bottom:6px;}
+  .gc-prog-label{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--text-dim);margin-bottom:5px;}
+  .prog-bar{height:4px;border-radius:2px;background:var(--navy-3);overflow:hidden;}
+  .prog-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--cyan),var(--success));transition:width 0.8s ease;}
+
+  .gc-body{padding:16px 20px;}
+
+  .gc-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .gc-meta-item{font-size:0.78rem;}
+  .gc-meta-label{font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;}
+  .gc-meta-val{color:var(--white);font-weight:600;}
+
+  .gc-members{margin-bottom:14px;}
+  .members-label{font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;}
+  .members-list{display:flex;flex-direction:column;gap:5px;}
+  .member-row{display:flex;align-items:center;gap:8px;font-size:0.78rem;}
+  .member-avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:0.52rem;font-weight:700;flex-shrink:0;}
+  .m-ok{background:rgba(0,255,170,0.1);border:1px solid var(--success);color:var(--success);}
+  .m-pending{background:rgba(255,184,0,0.1);border:1px solid var(--warn);color:var(--warn);}
+  .m-missing{background:rgba(106,138,170,0.08);border:1px solid var(--border);color:var(--text-dim);}
+  .m-flag{background:rgba(255,68,102,0.1);border:1px solid var(--danger);color:var(--danger);}
+  .member-name{flex:1;color:var(--text);}
+  .member-status{font-family:'Space Mono',monospace;font-size:0.58rem;}
+  .s-ok{color:var(--success);}
+  .s-pending{color:var(--warn);}
+  .s-missing{color:var(--text-dim);}
+  .s-flag{color:var(--danger);}
+
+  .gc-actions{display:flex;gap:8px;}
+  .gc-actions .btn{flex:1;justify-content:center;}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(5,13,26,0.88);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.3s;}
+  .modal-overlay.active{opacity:1;pointer-events:all;}
+  .modal{background:var(--navy-2);border:1px solid rgba(0,229,255,0.22);border-radius:10px;padding:40px;width:100%;max-width:520px;transform:translateY(20px);transition:transform 0.3s;position:relative;max-height:90vh;overflow-y:auto;}
+  .modal-overlay.active .modal{transform:translateY(0);}
+  .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.3rem;cursor:pointer;transition:color 0.2s;}
+  .modal-close:hover{color:var(--cyan);}
+  .modal-title{font-size:1.3rem;font-weight:700;color:var(--white);margin-bottom:6px;}
+  .modal-sub{font-size:0.82rem;color:var(--text-dim);margin-bottom:28px;}
+  .form-group{margin-bottom:16px;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  label{display:block;font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;}
+  input,select{width:100%;padding:10px 14px;background:var(--navy-3);border:1px solid var(--border);border-radius:4px;color:var(--white);font-family:'Space Mono',monospace;font-size:0.82rem;outline:none;transition:border-color 0.2s;}
+  input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,229,255,0.07);}
+  select option{background:var(--navy-2);}
+  .form-submit{width:100%;padding:13px;font-family:'Space Mono',monospace;font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--cyan);color:var(--navy);border:none;border-radius:4px;cursor:pointer;margin-top:6px;transition:all 0.2s;}
+  .form-submit:hover{background:var(--white);box-shadow:0 0 24px rgba(0,229,255,0.35);}
+
+  .divider{height:1px;background:var(--border);margin:20px 0;}
+
+  .student-add-row{display:flex;gap:8px;margin-bottom:8px;}
+  .student-add-row input{flex:1;}
+  .student-add-row .btn{white-space:nowrap;}
+
+  .added-students{display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;}
+  .added-student{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--navy-3);border:1px solid var(--border);border-radius:4px;font-size:0.78rem;}
+  .added-student .del{margin-left:auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:0.9rem;transition:color 0.2s;}
+  .added-student .del:hover{color:var(--danger);}
+
+  @media(max-width:900px){.sidebar{display:none;}.main{margin-left:0;}.content{padding:20px 16px;}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <a href="index.html" class="sidebar-logo">
+    <div class="logo-pulse"></div>
+    ProxiMesh
+  </a>
+  <div class="sidebar-section">Overview</div>
+  <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+  <a href="#" class="nav-item active"><span class="nav-icon">👥</span> Groups</a>
+  <a href="dashboard.html" class="nav-item"><span class="nav-icon">✅</span> Attendance</a>
+  <a href="dashboard.html" class="nav-item"><span class="nav-icon">📡</span> Live Mesh</a>
+  <div class="sidebar-section">Manage</div>
+  <a href="groups.html" class="nav-item active"><span class="nav-icon">🗂</span> Manage Groups</a>
+  <a href="#" class="nav-item"><span class="nav-icon">📋</span> Sessions</a>
+  <a href="#" class="nav-item"><span class="nav-icon">⚙️</span> Settings</a>
+  <div class="sidebar-bottom">
+    <div class="user-pill">
+      <div class="user-avatar">IF</div>
+      <div>
+        <div class="user-name">Dr. Iddrisu</div>
+        <div class="user-role">Lecturer</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Group Management</div>
+      <div class="topbar-sub">DCIT 304 · 6 Groups · 48 Students</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-outline btn-sm" onclick="openModal('import')">📥 Import CSV</button>
+      <button class="btn btn-primary" onclick="openModal('create')">+ New Group</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="toolbar">
+      <div class="search-wrap">
+        🔍
+        <input type="text" placeholder="Search groups or students..." oninput="filterGroups(this.value)" id="search-input"/>
+      </div>
+      <select class="filter" id="status-filter" onchange="filterGroups(document.getElementById('search-input').value)">
+        <option value="">All Status</option>
+        <option value="complete">Complete</option>
+        <option value="active">Active</option>
+        <option value="flagged">Flagged</option>
+      </select>
+      <select class="filter">
+        <option>Sort: Group Number</option>
+        <option>Sort: Attendance %</option>
+        <option>Sort: Name A-Z</option>
+      </select>
+    </div>
+
+    <div class="groups-grid" id="groups-grid"></div>
+  </div>
+</main>
+
+<!-- CREATE GROUP MODAL -->
+<div class="modal-overlay" id="modal-create">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModals()">×</button>
+    <div class="modal-title">Create New Group</div>
+    <div class="modal-sub">Define a group and add student members. A group anchor device can be assigned to broadcast the beacon.</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Group Number</label>
+        <input type="number" id="new-grp-num" placeholder="e.g. 7"/>
+      </div>
+      <div class="form-group">
+        <label>Topic / Label</label>
+        <input type="text" id="new-grp-label" placeholder="e.g. IoT Lab"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Group Leader (Student ID)</label>
+      <input type="text" id="new-grp-leader" placeholder="e.g. 10987654"/>
+    </div>
+    <div class="form-group">
+      <label>Anchor Device ID</label>
+      <input type="text" id="new-grp-device" placeholder="BLE MAC address or device ID"/>
+    </div>
+    <div class="divider"></div>
+    <div class="form-group">
+      <label>Add Students</label>
+      <div class="student-add-row">
+        <input type="text" id="student-id-input" placeholder="Student ID"/>
+        <input type="text" id="student-name-input" placeholder="Name" style="width:160px;"/>
+        <button class="btn btn-outline btn-sm" onclick="addStudent()">Add</button>
+      </div>
+      <div class="added-students" id="added-students">
+        <div style="font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--text-dim);text-align:center;padding:12px 0;">No students added yet</div>
+      </div>
+    </div>
+    <button class="form-submit" onclick="createGroup()">Create Group →</button>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModals()">×</button>
+    <div class="modal-title">Import Groups from CSV</div>
+    <div class="modal-sub">Upload a CSV file with columns: student_id, name, group_number. Groups will be created automatically.</div>
+    <div style="border:2px dashed var(--border);border-radius:8px;padding:40px;text-align:center;margin-bottom:20px;cursor:pointer;" onmouseenter="this.style.borderColor='rgba(0,229,255,0.35)'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div style="font-size:2.5rem;margin-bottom:10px;">📁</div>
+      <div style="font-weight:700;color:var(--white);margin-bottom:6px;">Drop your CSV here</div>
+      <div style="font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--text-dim);">or click to browse</div>
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--text-dim);margin-bottom:16px;">
+      Expected format: <span style="color:var(--cyan)">student_id, full_name, group_number, device_id</span>
+    </div>
+    <button class="form-submit" onclick="closeModals()">Upload & Import →</button>
+  </div>
+</div>
+
+<!-- EDIT GROUP MODAL -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModals()">×</button>
+    <div class="modal-title" id="edit-title">Edit Group</div>
+    <div class="modal-sub">Update group details, reassign anchor device, or remove members.</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Group Number</label>
+        <input type="number" id="edit-num"/>
+      </div>
+      <div class="form-group">
+        <label>Topic</label>
+        <input type="text" id="edit-label"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Group Leader</label>
+      <input type="text" id="edit-leader"/>
+    </div>
+    <div class="form-group">
+      <label>Anchor Device ID</label>
+      <input type="text" id="edit-device" placeholder="BLE device ID"/>
+    </div>
+    <div class="form-group">
+      <label>Verification Threshold</label>
+      <select>
+        <option>60% (Default)</option>
+        <option>75% (Strict)</option>
+        <option>50% (Lenient)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="form-submit" onclick="closeModals()" style="flex:1;">Save Changes →</button>
+      <button class="btn btn-danger" onclick="closeModals()" style="padding:13px 20px;font-size:0.72rem;">Delete Group</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let addedStudents = [];
+  let groupsData = [
+    { id:1, num:1, label:'Network Lab A', leader:'K. Asante', leaderId:'10123456', device:'BLE-A1B2C3', status:'complete',
+      members:[
+        {id:'10123456',name:'K. Asante',status:'ok'},
+        {id:'10234567',name:'A. Boateng',status:'ok'},
+        {id:'10345678',name:'E. Mensah',status:'ok'},
+        {id:'10456789',name:'J. Tetteh',status:'ok'},
+        {id:'10567890',name:'S. Owusu',status:'ok'},
+        {id:'10678901',name:'R. Adjei',status:'ok'},
+        {id:'10789012',name:'B. Frimpong',status:'ok'},
+        {id:'10890123',name:'C. Nyarko',status:'ok'},
+      ]},
+    { id:2, num:2, label:'Network Lab B', leader:'A. Mensah', leaderId:'20123456', device:'BLE-D4E5F6', status:'active',
+      members:[
+        {id:'20123456',name:'A. Mensah',status:'ok'},
+        {id:'20234567',name:'K. Frimpong',status:'ok'},
+        {id:'20345678',name:'J. Asare',status:'ok'},
+        {id:'20456789',name:'E. Quaye',status:'ok'},
+        {id:'20567890',name:'S. Acheampong',status:'ok'},
+        {id:'20678901',name:'R. Opoku',status:'ok'},
+        {id:'20789012',name:'B. Amoah',status:'ok'},
+        {id:'20890123',name:'C. Darkwa',status:'pending'},
+      ]},
+    { id:3, num:3, label:'Security Lab', leader:'J. Boateng', leaderId:'30123456', device:'BLE-G7H8I9', status:'flagged',
+      members:[
+        {id:'30123456',name:'J. Boateng',status:'ok'},
+        {id:'30234567',name:'A. Kwarteng',status:'ok'},
+        {id:'30345678',name:'E. Osei',status:'ok'},
+        {id:'30456789',name:'S. Takyi',status:'ok'},
+        {id:'30567890',name:'R. Adusei',status:'ok'},
+        {id:'30678901',name:'B. Lartey',status:'flag'},
+        {id:'30789012',name:'C. Marfo',status:'missing'},
+        {id:'???????',name:'X. Unknown',status:'flag'},
+      ]},
+    { id:4, num:4, label:'Database Lab', leader:'E. Owusu', leaderId:'40123456', device:'BLE-J1K2L3', status:'active',
+      members:[
+        {id:'40123456',name:'E. Owusu',status:'ok'},
+        {id:'40234567',name:'A. Nkrumah',status:'ok'},
+        {id:'40345678',name:'K. Antwi',status:'ok'},
+        {id:'40456789',name:'J. Amponsah',status:'ok'},
+        {id:'40567890',name:'S. Bediako',status:'ok'},
+        {id:'40678901',name:'R. Appiah',status:'ok'},
+        {id:'40789012',name:'B. Agyemang',status:'pending'},
+        {id:'40890123',name:'C. Asiedu',status:'missing'},
+      ]},
+    { id:5, num:5, label:'ML Lab', leader:'S. Tetteh', leaderId:'50123456', device:'BLE-M4N5O6', status:'active',
+      members:[
+        {id:'50123456',name:'S. Tetteh',status:'ok'},
+        {id:'50234567',name:'A. Bonsu',status:'ok'},
+        {id:'50345678',name:'E. Baah',status:'ok'},
+        {id:'50456789',name:'J. Danso',status:'ok'},
+        {id:'50567890',name:'K. Gyamfi',status:'ok'},
+        {id:'50678901',name:'R. Sarkodie',status:'pending'},
+        {id:'50789012',name:'B. Oduro',status:'missing'},
+        {id:'50890123',name:'C. Poku',status:'missing'},
+      ]},
+    { id:6, num:6, label:'Web Lab', leader:'R. Adjei', leaderId:'60123456', device:'BLE-P7Q8R9', status:'active',
+      members:[
+        {id:'60123456',name:'R. Adjei',status:'ok'},
+        {id:'60234567',name:'A. Sarpong',status:'ok'},
+        {id:'60345678',name:'E. Yeboah',status:'ok'},
+        {id:'60456789',name:'J. Domfeh',status:'ok'},
+        {id:'60567890',name:'S. Aidoo',status:'ok'},
+        {id:'60678901',name:'K. Quainoo',status:'pending'},
+        {id:'60789012',name:'B. Mensah',status:'missing'},
+        {id:'60890123',name:'C. Amoako',status:'missing'},
+      ]},
+  ];
+
+  const statusMap = {
+    complete:'<span class="tag tag-success">Complete</span>',
+    active:'<span class="tag tag-neutral">Active</span>',
+    flagged:'<span class="tag tag-danger">Flagged</span>',
+  };
+  const memberStatus = {
+    ok:{cls:'m-ok',label:'Verified',scls:'s-ok'},
+    pending:{cls:'m-pending',label:'Scanning',scls:'s-pending'},
+    missing:{cls:'m-missing',label:'Absent',scls:'s-missing'},
+    flag:{cls:'m-flag',label:'Flagged',scls:'s-flag'},
+  };
+
+  function renderGroups(data) {
+    const grid = document.getElementById('groups-grid');
+    if(!data.length){grid.innerHTML='<div style="color:var(--text-dim);font-family:Space Mono,monospace;font-size:0.8rem;grid-column:1/-1">No groups found.</div>';return;}
+    grid.innerHTML = data.map(g => {
+      const verified = g.members.filter(m=>m.status==='ok').length;
+      const pct = Math.round(verified/g.members.length*100);
+      const membersHtml = g.members.slice(0,5).map(m=>{
+        const s = memberStatus[m.status];
+        const initials = m.name.split(' ').map(x=>x[0]).join('');
+        return `<div class="member-row">
+          <div class="member-avatar ${s.cls}">${initials}</div>
+          <div class="member-name">${m.name}</div>
+          <div class="member-status ${s.scls}">${s.label}</div>
+        </div>`;
+      }).join('');
+      const extra = g.members.length > 5 ? `<div style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-top:4px;">+${g.members.length-5} more members</div>` : '';
+
+      return `<div class="group-card" id="gc-${g.id}">
+        <div class="gc-top">
+          <div class="gc-header">
+            <div>
+              <div class="gc-num">Group ${g.num}</div>
+              <div class="gc-name">${g.label}</div>
+            </div>
+            ${statusMap[g.status]}
+          </div>
+          <div class="gc-progress-wrap">
+            <div class="gc-prog-label"><span>${verified}/${g.members.length} verified</span><span>${pct}%</span></div>
+            <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+          </div>
+        </div>
+        <div class="gc-body">
+          <div class="gc-meta">
+            <div class="gc-meta-item"><div class="gc-meta-label">Leader</div><div class="gc-meta-val">${g.leader}</div></div>
+            <div class="gc-meta-item"><div class="gc-meta-label">Members</div><div class="gc-meta-val">${g.members.length}</div></div>
+            <div class="gc-meta-item"><div class="gc-meta-label">Device ID</div><div class="gc-meta-val" style="font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--cyan)">${g.device}</div></div>
+            <div class="gc-meta-item"><div class="gc-meta-label">Leader ID</div><div class="gc-meta-val" style="font-family:'Space Mono',monospace;font-size:0.72rem">${g.leaderId}</div></div>
+          </div>
+          <div class="gc-members">
+            <div class="members-label">Members</div>
+            <div class="members-list">${membersHtml}${extra}</div>
+          </div>
+          <div class="gc-actions">
+            <button class="btn btn-outline btn-sm" onclick="editGroup(${g.id})">✏️ Edit</button>
+            <button class="btn btn-outline btn-sm" onclick="viewMesh(${g.id})">📡 Mesh</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmDelete(${g.id})">🗑</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function filterGroups(query) {
+    const status = document.getElementById('status-filter').value;
+    const q = query.toLowerCase();
+    const filtered = groupsData.filter(g => {
+      const matchQ = !q || g.label.toLowerCase().includes(q) || g.leader.toLowerCase().includes(q) || ('group'+g.num).includes(q) || g.members.some(m=>m.name.toLowerCase().includes(q));
+      const matchS = !status || g.status === status;
+      return matchQ && matchS;
+    });
+    renderGroups(filtered);
+  }
+
+  function editGroup(id) {
+    const g = groupsData.find(x=>x.id===id);
+    document.getElementById('edit-title').textContent = `Edit Group ${g.num} — ${g.label}`;
+    document.getElementById('edit-num').value = g.num;
+    document.getElementById('edit-label').value = g.label;
+    document.getElementById('edit-leader').value = g.leader;
+    document.getElementById('edit-device').value = g.device;
+    openModal('edit');
+  }
+
+  function confirmDelete(id) {
+    const g = groupsData.find(x=>x.id===id);
+    if(confirm(`Delete Group ${g.num} — ${g.label}?\nThis will remove all ${g.members.length} student assignments.`)) {
+      groupsData = groupsData.filter(x=>x.id!==id);
+      renderGroups(groupsData);
+    }
+  }
+
+  function viewMesh(id) {
+    alert('Opening live mesh view for Group ' + id + '.\n(Connect to backend for real BLE data)');
+  }
+
+  function openModal(type) { closeModals(); document.getElementById('modal-'+type).classList.add('active'); }
+  function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('active')); }
+  document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModals();}));
+
+  function addStudent() {
+    const id = document.getElementById('student-id-input').value.trim();
+    const name = document.getElementById('student-name-input').value.trim();
+    if(!id||!name){alert('Enter both ID and name.');return;}
+    addedStudents.push({id,name});
+    document.getElementById('student-id-input').value='';
+    document.getElementById('student-name-input').value='';
+    renderAddedStudents();
+  }
+
+  function removeStudent(i) {
+    addedStudents.splice(i,1);
+    renderAddedStudents();
+  }
+
+  function renderAddedStudents() {
+    const el = document.getElementById('added-students');
+    if(!addedStudents.length){el.innerHTML='<div style="font-family:Space Mono,monospace;font-size:0.68rem;color:var(--text-dim);text-align:center;padding:12px 0">No students added yet</div>';return;}
+    el.innerHTML = addedStudents.map((s,i)=>`
+      <div class="added-student">
+        <span style="font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--cyan)">${s.id}</span>
+        <span style="font-size:0.8rem;">${s.name}</span>
+        <button class="del" onclick="removeStudent(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function createGroup() {
+    const num = document.getElementById('new-grp-num').value;
+    const label = document.getElementById('new-grp-label').value;
+    const leader = document.getElementById('new-grp-leader').value;
+    const device = document.getElementById('new-grp-device').value;
+    if(!num||!label){alert('Group number and label are required.');return;}
+    const leaderName = addedStudents.find(s=>s.id===leader)?.name || leader || 'TBD';
+    groupsData.push({
+      id: Date.now(), num:parseInt(num), label, leader:leaderName, leaderId:leader||'N/A', device:device||'N/A', status:'active',
+      members: addedStudents.map(s=>({id:s.id,name:s.name,status:'missing'}))
+    });
+    addedStudents=[];
+    renderAddedStudents();
+    closeModals();
+    renderGroups(groupsData);
+  }
+
+  renderGroups(groupsData);
+</script>
+</body>
+</html>
